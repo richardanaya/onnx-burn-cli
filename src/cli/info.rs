@@ -128,6 +128,7 @@ fn is_supported_op(name: &str) -> bool {
         "LessOrEqual",
         "IsInf",
         "IsNaN",
+        "And",
         // Normalization operations
         "LayerNormalization",
         "InstanceNormalization",
@@ -148,6 +149,17 @@ fn is_supported_op(name: &str) -> bool {
         // Advanced operations - additional
         "OneHot",
         "NonZero",
+        "ScatterND",
+        // Sequence operations
+        "Range",
+        // RNN operations
+        "LSTM",
+        // Audio operations
+        "STFT",
+        // Trigonometric
+        "Atan",
+        // ConvTranspose (generic)
+        "ConvTranspose",
         // Other
         "Constant",
     ];

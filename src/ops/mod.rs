@@ -1,11 +1,14 @@
 pub mod activation;
 pub mod advanced;
 pub mod arithmetic;
+pub mod audio;
 pub mod comparison;
 pub mod conv;
 pub mod linear;
 pub mod normalization;
 pub mod reduction;
+pub mod rnn;
+pub mod sequence;
 pub mod shape;
 pub mod unary;
 
@@ -95,6 +98,9 @@ pub fn dispatch<B: burn::prelude::Backend>(
         Node::Erf(_) => {
             crate::ops::unary::erf(node, values, device)?;
         }
+        Node::Atan(_) => {
+            crate::ops::unary::atan(node, values, device)?;
+        }
 
         // Phase 1 operators
         Node::Add(_) => {
@@ -159,6 +165,9 @@ pub fn dispatch<B: burn::prelude::Backend>(
         }
         Node::ConvTranspose1d(_) => {
             crate::ops::conv::conv_transpose1d(node, values, device)?;
+        }
+        Node::ConvTranspose(_) => {
+            crate::ops::conv::conv_transpose(node, values, device)?;
         }
         Node::MaxPool2d(_) => {
             crate::ops::conv::max_pool_2d(node, values, device)?;
@@ -266,6 +275,9 @@ pub fn dispatch<B: burn::prelude::Backend>(
         Node::IsNaN(_) => {
             crate::ops::comparison::is_nan(node, values, device)?;
         }
+        Node::And(_) => {
+            crate::ops::comparison::and(node, values, device)?;
+        }
         // Binary/variadic arithmetic operators
         Node::Pow(_) => {
             crate::ops::arithmetic::pow(node, values, device)?;
@@ -344,6 +356,26 @@ pub fn dispatch<B: burn::prelude::Backend>(
         }
         Node::NonZero(_) => {
             crate::ops::advanced::nonzero(node, values, device)?;
+        }
+
+        // Sequence operations
+        Node::Range(_) => {
+            crate::ops::sequence::range(node, values, device)?;
+        }
+
+        // ScatterND
+        Node::ScatterND(_) => {
+            crate::ops::advanced::scatter_nd(node, values, device)?;
+        }
+
+        // RNN operations
+        Node::Lstm(_) => {
+            crate::ops::rnn::lstm(node, values, device)?;
+        }
+
+        // Audio operations
+        Node::Stft(_) => {
+            crate::ops::audio::stft(node, values, device)?;
         }
         _ => anyhow::bail!("Unsupported operator: {} | {:?}", node.name(), node),
     }

@@ -165,6 +165,18 @@ pub fn erf<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Dev
     }
 }
 
+pub fn atan<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    _device: &B::Device,
+) -> Result<()> {
+    if let Node::Atan(_n) = node {
+        unary_op(node, values, |t| t.atan())
+    } else {
+        Err(anyhow!("Not an Atan node"))
+    }
+}
+
 /// Generic unary operation handler
 fn unary_op<F, B: Backend>(node: &Node, values: &mut ValueStore<B>, op: F) -> Result<()>
 where

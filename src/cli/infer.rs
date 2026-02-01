@@ -232,7 +232,7 @@ fn is_supported_op(name: &str) -> bool {
         "ReduceSum", "ReduceMean", "ReduceMax", "ReduceMin", "ReduceProd",
         "ArgMax", "ArgMin",
         // Comparison operations
-        "Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual", "IsInf", "IsNaN",
+        "Equal", "Greater", "Less", "GreaterOrEqual", "LessOrEqual", "IsInf", "IsNaN", "And",
         // Normalization operations
         "LayerNormalization", "InstanceNormalization", "GroupNormalization",
         // Advanced operations
@@ -242,7 +242,17 @@ fn is_supported_op(name: &str) -> bool {
         // Spatial transform
         "Resize", "DepthToSpace", "SpaceToDepth",
         // Advanced operations - additional
-        "OneHot", "NonZero",
+        "OneHot", "NonZero", "ScatterND",
+        // Sequence operations
+        "Range",
+        // RNN operations
+        "LSTM",
+        // Audio operations
+        "STFT",
+        // Trigonometric
+        "Atan",
+        // ConvTranspose (generic)
+        "ConvTranspose",
         // Other
         "Constant",
     ];

@@ -589,3 +589,129 @@ pub fn conv_transpose1d<B: Backend>(
         Err(anyhow!("Not a ConvTranspose1d node"))
     }
 }
+
+/// Generic ConvTranspose handler for unsupported ConvTranspose nodes
+/// Examines input rank to dispatch to ConvTranspose1d or ConvTranspose2d
+pub fn conv_transpose<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    device: &B::Device,
+) -> Result<()> {
+    if let Node::ConvTranspose(n) = node {
+        let input_name = &n.inputs[0].name;
+        let output_name = &n.outputs[0].name;
+
+        // Get input tensor to determine rank
+        let input_dyn = values
+            .get(input_name)
+            .ok_or_else(|| anyhow!("Input tensor '{}' not found for ConvTranspose", input_name))?;
+
+        let input_rank = input_dyn.rank();
+
+        // Get weight tensor to determine kernel dimensions
+        let weight_arg = &n.inputs[1];
+        let weight_data = weight_arg
+            .value()
+            .ok_or_else(|| anyhow!("ConvTranspose weight tensor not found"))?;
+        let weight_slice = weight_data
+            .as_slice::<f32>()
+            .map_err(|e| anyhow!("Could not convert weight to f32: {:?}", e))?;
+        let weight_shape: Vec<usize> = weight_data.shape.iter().map(|&d| d as usize).collect();
+
+        match input_rank {
+            3 => {
+                // ConvTranspose1d: input [batch, channels_in, length]
+                // Weight: [channels_in, channels_out/groups, kernel_size]
+                let input: Tensor<B, 3> = input_dyn.as_rank3();
+
+                let channels_in = weight_shape[0];
+                let channels_out_per_group = weight_shape[1];
+                let kernel_size = weight_shape[2];
+
+                // Infer groups and channels_out from weight shape
+                // Typically groups=1 for most models
+                let groups = 1usize;
+                let channels_out = channels_out_per_group * groups;
+
+                let weight_tensor_data = TensorData::new(
+                    weight_slice.to_vec(),
+                    [channels_in, channels_out_per_group, kernel_size],
+                );
+                let weight: Tensor<B, 3> = Tensor::from_data(weight_tensor_data, device);
+
+                // Get optional bias
+                let bias: Option<Tensor<B, 1>> = if n.inputs.len() > 2 {
+                    if let Some(bias_data) = n.inputs[2].value() {
+                        let bias_slice = bias_data
+                            .as_slice::<f32>()
+                            .map_err(|e| anyhow!("Could not convert bias to f32: {:?}", e))?;
+                        let bias_tensor_data = TensorData::new(bias_slice.to_vec(), [channels_out]);
+                        Some(Tensor::from_data(bias_tensor_data, device))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                // Default options - stride=1, padding=0, dilation=1
+                // TODO: Extract from node attributes if available
+                let conv_options = ConvTransposeOptions::new([1], [0], [0], [1], groups);
+
+                let output = module::conv_transpose1d(input, weight, bias, conv_options);
+                values.insert(output_name.clone(), DynTensor::from_rank3(output));
+            }
+            4 => {
+                // ConvTranspose2d: input [batch, channels_in, height, width]
+                // Weight: [channels_in, channels_out/groups, kernel_h, kernel_w]
+                let input: Tensor<B, 4> = input_dyn.as_rank4();
+
+                let channels_in = weight_shape[0];
+                let channels_out_per_group = weight_shape[1];
+                let kernel_h = weight_shape[2];
+                let kernel_w = weight_shape[3];
+
+                let groups = 1usize;
+                let channels_out = channels_out_per_group * groups;
+
+                let weight_tensor_data = TensorData::new(
+                    weight_slice.to_vec(),
+                    [channels_in, channels_out_per_group, kernel_h, kernel_w],
+                );
+                let weight: Tensor<B, 4> = Tensor::from_data(weight_tensor_data, device);
+
+                // Get optional bias
+                let bias: Option<Tensor<B, 1>> = if n.inputs.len() > 2 {
+                    if let Some(bias_data) = n.inputs[2].value() {
+                        let bias_slice = bias_data
+                            .as_slice::<f32>()
+                            .map_err(|e| anyhow!("Could not convert bias to f32: {:?}", e))?;
+                        let bias_tensor_data = TensorData::new(bias_slice.to_vec(), [channels_out]);
+                        Some(Tensor::from_data(bias_tensor_data, device))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+
+                // Default options
+                let conv_options =
+                    ConvTransposeOptions::new([1, 1], [0, 0], [0, 0], [1, 1], groups);
+
+                let output = module::conv_transpose2d(input, weight, bias, conv_options);
+                values.insert(output_name.clone(), DynTensor::from_rank4(output));
+            }
+            _ => {
+                return Err(anyhow!(
+                    "ConvTranspose: unsupported input rank {}, expected 3 (1D) or 4 (2D)",
+                    input_rank
+                ));
+            }
+        }
+
+        Ok(())
+    } else {
+        Err(anyhow!("Not a ConvTranspose node"))
+    }
+}

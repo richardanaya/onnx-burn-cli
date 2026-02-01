@@ -231,3 +231,20 @@ pub fn is_nan<B: Backend>(
         Err(anyhow!("Not an IsNaN node"))
     }
 }
+
+pub fn and<B: Backend>(node: &Node, values: &mut ValueStore<B>, device: &B::Device) -> Result<()> {
+    if let Node::And(_) = node {
+        // And operates on boolean tensors (represented as float 0/1)
+        // Result is 1 if both inputs are non-zero, 0 otherwise
+        comparison_op(node, values, device, "And", |a, b| {
+            // Convert to bool (non-zero = true), AND them, convert back to float
+            let a_bool = a.greater_elem(0.0);
+            let b_bool = b.greater_elem(0.0);
+            // AND: both must be true
+            // a AND b = (a_bool * b_bool) where both are 0 or 1
+            a_bool.float().mul(b_bool.float())
+        })
+    } else {
+        Err(anyhow!("Not an And node"))
+    }
+}

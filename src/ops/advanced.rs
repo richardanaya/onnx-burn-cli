@@ -907,3 +907,141 @@ pub fn one_hot<B: Backend>(
         Err(anyhow!("Not a OneHot node"))
     }
 }
+
+/// ScatterND operator - scatters updates into a copy of data at indices
+/// output = copy of data, with updates scattered at positions specified by indices
+pub fn scatter_nd<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    device: &B::Device,
+) -> Result<()> {
+    if let Node::ScatterND(n) = node {
+        let output_name = &n.outputs[0].name;
+
+        // Get data tensor
+        let data_dyn = get_input_tensor(&n.inputs[0], values, device)?;
+        let data_shape = data_dyn.shape().to_vec();
+        let data_rank = data_shape.len();
+
+        // Get indices tensor
+        let (indices, indices_shape) = get_indices_tensor(&n.inputs[1], values, device)?;
+        let indices_rank = indices_shape.len();
+
+        // Get updates tensor
+        let updates_dyn = get_input_tensor(&n.inputs[2], values, device)?;
+
+        // Get data as flat array
+        let data_4d = data_dyn.as_rank4();
+        let data_tensor_data = data_4d.to_data();
+        let mut output_data: Vec<f32> = data_tensor_data
+            .to_vec()
+            .map_err(|e| anyhow!("ScatterND: cannot get data: {:?}", e))?;
+
+        // Get updates as flat array
+        let updates_4d = updates_dyn.as_rank4();
+        let updates_tensor_data = updates_4d.to_data();
+        let updates_data: Vec<f32> = updates_tensor_data
+            .to_vec()
+            .map_err(|e| anyhow!("ScatterND: cannot get updates: {:?}", e))?;
+
+        // indices has shape [..., k] where k is the number of dimensions to index into data
+        // k = indices_shape[indices_rank - 1]
+        let k = if indices_rank > 0 {
+            indices_shape[indices_rank - 1]
+        } else {
+            1
+        };
+
+        // Calculate strides for data tensor
+        let mut data_strides = vec![1usize; data_rank];
+        for i in (0..data_rank - 1).rev() {
+            data_strides[i] = data_strides[i + 1] * data_shape[i + 1];
+        }
+
+        // Number of scatter operations = product of indices shape except last dim
+        let num_scatters: usize = if indices_rank > 1 {
+            indices_shape[..indices_rank - 1].iter().product()
+        } else {
+            1
+        };
+
+        // Size of each update slice = product of data shape from k onwards
+        let update_slice_size: usize = if k < data_rank {
+            data_shape[k..].iter().product()
+        } else {
+            1
+        };
+
+        // Perform scatter
+        for scatter_idx in 0..num_scatters {
+            // Get the k-dimensional index for this scatter
+            let indices_offset = scatter_idx * k;
+            let mut data_flat_idx = 0usize;
+
+            for dim in 0..k {
+                let idx = indices[indices_offset + dim];
+                let actual_idx = if idx < 0 {
+                    (data_shape[dim] as i64 + idx) as usize
+                } else {
+                    idx as usize
+                };
+
+                if actual_idx >= data_shape[dim] {
+                    return Err(anyhow!(
+                        "ScatterND: index {} out of bounds for dim {} with size {}",
+                        idx,
+                        dim,
+                        data_shape[dim]
+                    ));
+                }
+
+                data_flat_idx += actual_idx * data_strides[dim];
+            }
+
+            // Copy update slice to output
+            let updates_offset = scatter_idx * update_slice_size;
+            for i in 0..update_slice_size {
+                output_data[data_flat_idx + i] = updates_data[updates_offset + i];
+            }
+        }
+
+        // Create output tensor
+        let output_dyn = match data_rank {
+            1 => {
+                let tensor: Tensor<B, 1> =
+                    Tensor::from_data(TensorData::new(output_data, [data_shape[0]]), device);
+                DynTensor::from_rank1(tensor)
+            }
+            2 => {
+                let tensor: Tensor<B, 2> = Tensor::from_data(
+                    TensorData::new(output_data, [data_shape[0], data_shape[1]]),
+                    device,
+                );
+                DynTensor::from_rank2(tensor)
+            }
+            3 => {
+                let tensor: Tensor<B, 3> = Tensor::from_data(
+                    TensorData::new(output_data, [data_shape[0], data_shape[1], data_shape[2]]),
+                    device,
+                );
+                DynTensor::from_rank3(tensor)
+            }
+            4 => {
+                let tensor: Tensor<B, 4> = Tensor::from_data(
+                    TensorData::new(
+                        output_data,
+                        [data_shape[0], data_shape[1], data_shape[2], data_shape[3]],
+                    ),
+                    device,
+                );
+                DynTensor::from_rank4(tensor)
+            }
+            _ => return Err(anyhow!("ScatterND: unsupported data rank {}", data_rank)),
+        };
+
+        values.insert(output_name.clone(), output_dyn);
+        Ok(())
+    } else {
+        Err(anyhow!("Not a ScatterND node"))
+    }
+}
