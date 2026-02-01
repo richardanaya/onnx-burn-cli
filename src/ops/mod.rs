@@ -342,6 +342,9 @@ pub fn dispatch<B: burn::prelude::Backend>(
         Node::OneHot(_) => {
             crate::ops::advanced::one_hot(node, values, device)?;
         }
+        Node::NonZero(_) => {
+            crate::ops::advanced::nonzero(node, values, device)?;
+        }
         _ => anyhow::bail!("Unsupported operator: {} | {:?}", node.name(), node),
     }
 

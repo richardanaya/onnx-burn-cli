@@ -117,7 +117,7 @@ pub fn matmul<B: Backend>(
                 let batch = a_shape[0];
                 let m = a_shape[1];
                 let k = a_shape[2];
-                let n = b_shape[1];
+                let _n = b_shape[1];
 
                 // We need to expand B to have a batch dimension
                 // [K, N] -> [batch, K, N]
@@ -134,8 +134,8 @@ pub fn matmul<B: Backend>(
                 let b_shape = b.shape();
 
                 let batch = b_shape[0];
-                let m = a_shape[0];
-                let k = a_shape[1];
+                let _m = a_shape[0];
+                let _k = a_shape[1];
                 let n = b_shape[2];
 
                 // Expand A to have a batch dimension

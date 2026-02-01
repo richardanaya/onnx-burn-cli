@@ -122,7 +122,7 @@
 - [x] 12.2 Implement Gather operator
 - [x] 12.3 Implement GatherElements operator
 - [x] 12.4 Implement TopK operator
-- [ ] 12.5 Implement NonZero operator (deferred - complex implementation)
+- [x] 12.5 Implement NonZero operator
 - [x] 12.6 Implement Where operator
 - [x] 12.7 Implement OneHot operator
 - [x] 12.8 Implement CumSum operator

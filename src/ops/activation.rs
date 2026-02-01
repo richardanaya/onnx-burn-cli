@@ -3,7 +3,7 @@ use crate::runtime::value_store::ValueStore;
 use anyhow::{anyhow, Result};
 use burn::prelude::Backend;
 use burn::tensor::activation;
-use burn::tensor::Tensor;
+use burn::tensor::{Tensor, TensorData};
 use onnx_ir::ir::Node;
 
 pub fn relu<B: Backend>(
@@ -388,12 +388,11 @@ pub fn clip<B: Backend>(
 /// Cast operation - converts tensor between dtypes
 /// Note: Currently nnx only supports float tensors internally, so Cast operations
 /// between float types are treated as no-ops. Cast to/from int/bool types
-/// will require enhanced DynTensor support.
-pub fn cast<B: Backend>(
-    node: &Node,
-    values: &mut ValueStore<B>,
-    _device: &B::Device,
-) -> Result<()> {
+/// Cast performs dtype conversion on tensors.
+/// Since DynTensor stores everything as f32 internally, we perform the
+/// mathematical conversion (e.g., truncation for float-to-int) even though
+/// the underlying storage remains f32.
+pub fn cast<B: Backend>(node: &Node, values: &mut ValueStore<B>, device: &B::Device) -> Result<()> {
     if let Node::Cast(n) = node {
         let input_name = &n.inputs[0].name;
         let output_name = &n.outputs[0].name;
@@ -403,30 +402,87 @@ pub fn cast<B: Backend>(
             .get(input_name)
             .ok_or_else(|| anyhow!("Input tensor '{}' not found for Cast", input_name))?;
 
-        // For now, DynTensor only supports float tensors internally
-        // Cast between float types is a no-op (F16, F32, F64 all stored as F32)
-        // For int/bool types, we pass through but note the limitation
+        let input_shape = input_dyn.shape().to_vec();
+        let rank = input_shape.len();
+
+        // Get input data
+        let input_4d = input_dyn.as_rank4();
+        let input_data = input_4d.to_data();
+        let input_slice: Vec<f32> = input_data
+            .to_vec()
+            .map_err(|e| anyhow!("Could not get input data: {:?}", e))?;
+
         use burn::tensor::DType;
-        match target_dtype {
+
+        // Perform the conversion
+        let output_slice: Vec<f32> = match target_dtype {
             DType::F32 | DType::F64 | DType::F16 | DType::BF16 => {
-                // Float-to-float cast: pass through (no-op in our current representation)
-                values.insert(output_name.clone(), input_dyn.clone());
+                // Float-to-float: no conversion needed
+                input_slice
             }
             DType::I64 | DType::I32 | DType::I16 | DType::I8 => {
-                // Float-to-int cast: for now, pass through with a warning
-                // This works if the tensor is used in contexts expecting floats
-                // but may cause issues if integer operations are expected
-                values.insert(output_name.clone(), input_dyn.clone());
+                // Float-to-int: truncate towards zero
+                input_slice.iter().map(|&v| v.trunc()).collect()
+            }
+            DType::U64 | DType::U32 | DType::U16 | DType::U8 => {
+                // Float-to-unsigned-int: truncate and clamp to non-negative
+                input_slice.iter().map(|&v| v.trunc().max(0.0)).collect()
             }
             DType::Bool => {
-                // Float-to-bool cast: pass through
-                // Non-zero values are true, zero is false
-                values.insert(output_name.clone(), input_dyn.clone());
+                // Float-to-bool: non-zero becomes 1.0, zero stays 0.0
+                input_slice
+                    .iter()
+                    .map(|&v| if v != 0.0 { 1.0 } else { 0.0 })
+                    .collect()
             }
             _ => {
                 return Err(anyhow!("Cast: unsupported target dtype {:?}", target_dtype));
             }
-        }
+        };
+
+        // Rebuild tensor with same shape
+        let output_dyn = match rank {
+            1 => {
+                let tensor: Tensor<B, 1> =
+                    Tensor::from_data(TensorData::new(output_slice, [input_shape[0]]), device);
+                DynTensor::from_rank1(tensor)
+            }
+            2 => {
+                let tensor: Tensor<B, 2> = Tensor::from_data(
+                    TensorData::new(output_slice, [input_shape[0], input_shape[1]]),
+                    device,
+                );
+                DynTensor::from_rank2(tensor)
+            }
+            3 => {
+                let tensor: Tensor<B, 3> = Tensor::from_data(
+                    TensorData::new(
+                        output_slice,
+                        [input_shape[0], input_shape[1], input_shape[2]],
+                    ),
+                    device,
+                );
+                DynTensor::from_rank3(tensor)
+            }
+            4 => {
+                let tensor: Tensor<B, 4> = Tensor::from_data(
+                    TensorData::new(
+                        output_slice,
+                        [
+                            input_shape[0],
+                            input_shape[1],
+                            input_shape[2],
+                            input_shape[3],
+                        ],
+                    ),
+                    device,
+                );
+                DynTensor::from_rank4(tensor)
+            }
+            _ => return Err(anyhow!("Cast: unsupported rank {}", rank)),
+        };
+
+        values.insert(output_name.clone(), output_dyn);
         Ok(())
     } else {
         Err(anyhow!("Not a Cast node"))
@@ -439,8 +495,6 @@ pub fn constant_of_shape<B: Backend>(
     values: &mut ValueStore<B>,
     device: &B::Device,
 ) -> Result<()> {
-    use burn::tensor::TensorData;
-
     if let Node::ConstantOfShape(n) = node {
         let output_name = &n.outputs[0].name;
 

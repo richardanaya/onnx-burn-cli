@@ -49,7 +49,7 @@ pub fn flatten<B: Backend>(
 pub fn reshape<B: Backend>(
     node: &Node,
     values: &mut ValueStore<B>,
-    device: &B::Device,
+    _device: &B::Device,
 ) -> Result<()> {
     if let Node::Reshape(n) = node {
         let input_name = &n.inputs[0].name;
@@ -385,7 +385,7 @@ pub fn transpose<B: Backend>(
             2 => {
                 // For 2D, map [0,1] perm to [0,1,2,3] perm for rank-4
                 // Original dims are at positions 2,3 in rank-4
-                let p: [usize; 4] = [0, 1, 2 + perm[0] as usize - 0, 2 + perm[1] as usize - 0];
+                let _p: [usize; 4] = [0, 1, 2 + perm[0] as usize - 0, 2 + perm[1] as usize - 0];
                 let p_normalized: [usize; 4] = if perm == &[1, 0] {
                     [0, 1, 3, 2]
                 } else {

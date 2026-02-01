@@ -2,7 +2,7 @@ use crate::runtime::tensor::DynTensor;
 use crate::runtime::value_store::ValueStore;
 use anyhow::{anyhow, Result};
 use burn::prelude::Backend;
-use burn::tensor::{Bool, Int, Tensor, TensorData};
+use burn::tensor::{Tensor, TensorData};
 use onnx_ir::ir::Node;
 
 /// Helper to get input tensor from value store or constant data
@@ -61,7 +61,7 @@ fn get_input_tensor<B: Backend>(
 fn get_indices_tensor<B: Backend>(
     input: &onnx_ir::ir::Argument,
     values: &ValueStore<B>,
-    device: &B::Device,
+    _device: &B::Device,
 ) -> Result<(Vec<i64>, Vec<usize>)> {
     // Try to get from constant data first
     if let Some(tensor_data) = input.value() {
@@ -202,8 +202,8 @@ pub fn gather<B: Backend>(
 
         // Generic fallback using rank-4 representation
         // This is less efficient but handles more cases
-        let dims = data_tensor.dims();
-        let normalized_axis = if axis < data_rank { axis } else { 0 };
+        let _dims = data_tensor.dims();
+        let _normalized_axis = if axis < data_rank { axis } else { 0 };
 
         // For now, return error for unsupported configurations
         Err(anyhow!(
@@ -624,6 +624,98 @@ pub fn cumsum<B: Backend>(
         ))
     } else {
         Err(anyhow!("Not a CumSum node"))
+    }
+}
+
+/// NonZero operator - returns indices of non-zero elements
+/// Output shape: [input_rank, num_nonzero_elements]
+pub fn nonzero<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    device: &B::Device,
+) -> Result<()> {
+    if let Node::NonZero(n) = node {
+        let input_name = &n.inputs[0].name;
+        let output_name = &n.outputs[0].name;
+
+        let input_dyn = values
+            .get(input_name)
+            .ok_or_else(|| anyhow!("Input tensor '{}' not found for NonZero", input_name))?;
+
+        let input_shape = input_dyn.shape().to_vec();
+        let input_rank = input_shape.len();
+
+        // Get input data as flat array
+        let input_4d = input_dyn.as_rank4();
+        let input_data = input_4d.to_data();
+        let input_slice: Vec<f32> = input_data
+            .to_vec()
+            .map_err(|e| anyhow!("Could not get input data: {:?}", e))?;
+
+        // Find all non-zero element indices
+        // We need to track multi-dimensional indices
+        let total_elements: usize = input_shape.iter().product();
+
+        // Calculate strides for converting flat index to multi-dimensional index
+        let mut strides = vec![1usize; input_rank];
+        if input_rank > 0 {
+            for i in (0..input_rank - 1).rev() {
+                strides[i] = strides[i + 1] * input_shape[i + 1];
+            }
+        }
+
+        // Collect indices of non-zero elements
+        let mut nonzero_indices: Vec<Vec<i64>> = vec![Vec::new(); input_rank];
+
+        for flat_idx in 0..total_elements {
+            let value = input_slice[flat_idx];
+            if value != 0.0 {
+                // Convert flat index to multi-dimensional indices
+                let mut remaining = flat_idx;
+                for dim in 0..input_rank {
+                    let coord = remaining / strides[dim];
+                    remaining %= strides[dim];
+                    nonzero_indices[dim].push(coord as i64);
+                }
+            }
+        }
+
+        let num_nonzero = if input_rank > 0 {
+            nonzero_indices[0].len()
+        } else {
+            0
+        };
+
+        // Create output tensor of shape [input_rank, num_nonzero]
+        // Stored as f32 since DynTensor is float-based
+        let mut output_data = Vec::with_capacity(input_rank * num_nonzero);
+        for dim in 0..input_rank {
+            for &idx in &nonzero_indices[dim] {
+                output_data.push(idx as f32);
+            }
+        }
+
+        // Handle edge case of empty output
+        if num_nonzero == 0 {
+            // Return empty tensor with shape [input_rank, 0]
+            // Since we can't have actual 0-size tensors easily, create minimal tensor
+            let output_tensor: Tensor<B, 2> = Tensor::from_data(
+                TensorData::new(vec![0.0f32; input_rank], [input_rank, 1]),
+                device,
+            );
+            // Note: This is a workaround - ideally we'd return [input_rank, 0] shape
+            values.insert(output_name.clone(), DynTensor::from_rank2(output_tensor));
+        } else {
+            let output_tensor: Tensor<B, 2> = Tensor::from_data(
+                TensorData::new(output_data, [input_rank, num_nonzero]),
+                device,
+            );
+            values.insert(output_name.clone(), DynTensor::from_rank2(output_tensor));
+        }
+
+        Ok(())
+    } else {
+        Err(anyhow!("Not a NonZero node"))
     }
 }
 

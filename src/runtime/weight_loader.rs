@@ -1,4 +1,3 @@
-use crate::runtime::tensor::DynTensor;
 use crate::runtime::value_store::ValueStore;
 use burn::prelude::Backend;
 

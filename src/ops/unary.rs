@@ -6,7 +6,7 @@ use burn::tensor::Tensor;
 use onnx_ir::ir::Node;
 
 pub fn abs<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Abs(n) = node {
+    if let Node::Abs(_n) = node {
         unary_op(node, values, |t| t.abs())
     } else {
         Err(anyhow!("Not an Abs node"))
@@ -14,7 +14,7 @@ pub fn abs<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Dev
 }
 
 pub fn neg<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Neg(n) = node {
+    if let Node::Neg(_n) = node {
         unary_op(node, values, |t| t.neg())
     } else {
         Err(anyhow!("Not a Neg node"))
@@ -26,7 +26,7 @@ pub fn sqrt<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Sqrt(n) = node {
+    if let Node::Sqrt(_n) = node {
         unary_op(node, values, |t| t.sqrt())
     } else {
         Err(anyhow!("Not a Sqrt node"))
@@ -34,7 +34,7 @@ pub fn sqrt<B: Backend>(
 }
 
 pub fn exp<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Exp(n) = node {
+    if let Node::Exp(_n) = node {
         unary_op(node, values, |t| t.exp())
     } else {
         Err(anyhow!("Not an Exp node"))
@@ -42,7 +42,7 @@ pub fn exp<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Dev
 }
 
 pub fn log<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Log(n) = node {
+    if let Node::Log(_n) = node {
         unary_op(node, values, |t| t.log())
     } else {
         Err(anyhow!("Not a Log node"))
@@ -54,7 +54,7 @@ pub fn ceil<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Ceil(n) = node {
+    if let Node::Ceil(_n) = node {
         unary_op(node, values, |t| t.ceil())
     } else {
         Err(anyhow!("Not a Ceil node"))
@@ -66,7 +66,7 @@ pub fn floor<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Floor(n) = node {
+    if let Node::Floor(_n) = node {
         unary_op(node, values, |t| t.floor())
     } else {
         Err(anyhow!("Not a Floor node"))
@@ -78,7 +78,7 @@ pub fn round<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Round(n) = node {
+    if let Node::Round(_n) = node {
         unary_op(node, values, |t| t.round())
     } else {
         Err(anyhow!("Not a Round node"))
@@ -90,7 +90,7 @@ pub fn sign<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Sign(n) = node {
+    if let Node::Sign(_n) = node {
         unary_op(node, values, |t| t.sign())
     } else {
         Err(anyhow!("Not a Sign node"))
@@ -102,7 +102,7 @@ pub fn reciprocal<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Reciprocal(n) = node {
+    if let Node::Reciprocal(_n) = node {
         unary_op(node, values, |t| t.recip())
     } else {
         Err(anyhow!("Not a Reciprocal node"))
@@ -110,7 +110,7 @@ pub fn reciprocal<B: Backend>(
 }
 
 pub fn sin<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Sin(n) = node {
+    if let Node::Sin(_n) = node {
         unary_op(node, values, |t| t.sin())
     } else {
         Err(anyhow!("Not a Sin node"))
@@ -118,7 +118,7 @@ pub fn sin<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Dev
 }
 
 pub fn cos<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Cos(n) = node {
+    if let Node::Cos(_n) = node {
         unary_op(node, values, |t| t.cos())
     } else {
         Err(anyhow!("Not a Cos node"))
@@ -126,7 +126,7 @@ pub fn cos<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Dev
 }
 
 pub fn tan<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Tan(n) = node {
+    if let Node::Tan(_n) = node {
         unary_op(node, values, |t| t.tan())
     } else {
         Err(anyhow!("Not a Tan node"))
@@ -138,7 +138,7 @@ pub fn sinh<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Sinh(n) = node {
+    if let Node::Sinh(_n) = node {
         unary_op(node, values, |t| t.sinh())
     } else {
         Err(anyhow!("Not a Sinh node"))
@@ -150,7 +150,7 @@ pub fn cosh<B: Backend>(
     values: &mut ValueStore<B>,
     _device: &B::Device,
 ) -> Result<()> {
-    if let Node::Cosh(n) = node {
+    if let Node::Cosh(_n) = node {
         unary_op(node, values, |t| t.cosh())
     } else {
         Err(anyhow!("Not a Cosh node"))
@@ -158,7 +158,7 @@ pub fn cosh<B: Backend>(
 }
 
 pub fn erf<B: Backend>(node: &Node, values: &mut ValueStore<B>, _device: &B::Device) -> Result<()> {
-    if let Node::Erf(n) = node {
+    if let Node::Erf(_n) = node {
         unary_op(node, values, |t| t.erf())
     } else {
         Err(anyhow!("Not an Erf node"))

@@ -3,7 +3,7 @@ use crate::input::image;
 use crate::runtime::executor;
 use anyhow::{Result, anyhow};
 use burn_wgpu::Wgpu;
-use burn::{prelude::Backend, tensor::Tensor, tensor::TensorData};
+use burn::{tensor::Tensor, tensor::TensorData};
 use std::collections::HashMap;
 
 type OurBackend = Wgpu;
@@ -242,7 +242,7 @@ fn is_supported_op(name: &str) -> bool {
         // Spatial transform
         "Resize", "DepthToSpace", "SpaceToDepth",
         // Advanced operations - additional
-        "OneHot",
+        "OneHot", "NonZero",
         // Other
         "Constant",
     ];

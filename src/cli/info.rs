@@ -1,6 +1,6 @@
 use anyhow::Result;
 use onnx_ir::{
-    ir::{ArgType, DType, Node, TensorType as IrTensorType},
+    ir::{ArgType, Node},
     OnnxGraphBuilder,
 };
 use std::collections::HashSet;
@@ -147,6 +147,7 @@ fn is_supported_op(name: &str) -> bool {
         "SpaceToDepth",
         // Advanced operations - additional
         "OneHot",
+        "NonZero",
         // Other
         "Constant",
     ];
