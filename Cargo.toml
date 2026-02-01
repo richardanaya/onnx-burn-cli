@@ -2,6 +2,8 @@
 name = "nnx"
 version = "0.0.0"
 edition = "2024"
+description = "CLI for ONNX inference using Burn"
+license = "MIT"
 
 [dependencies]
 # CLI
