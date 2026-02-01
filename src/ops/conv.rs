@@ -512,3 +512,80 @@ pub fn conv_transpose2d<B: Backend>(
         Err(anyhow!("Not a ConvTranspose2d node"))
     }
 }
+
+pub fn conv_transpose1d<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    device: &B::Device,
+) -> Result<()> {
+    if let Node::ConvTranspose1d(n) = node {
+        let input_name = &n.inputs[0].name;
+        let output_name = &n.outputs[0].name;
+        let config = &n.config;
+
+        // Get input tensor [batch, channels_in, length]
+        let input_dyn = values.get(input_name).ok_or_else(|| {
+            anyhow!(
+                "Input tensor '{}' not found for ConvTranspose1d",
+                input_name
+            )
+        })?;
+        let input: Tensor<B, 3> = input_dyn.as_rank3();
+
+        // Get weight tensor [channels_in, channels_out/groups, kernel_size]
+        let weight_arg = &n.inputs[1];
+        let weight_data = weight_arg
+            .value()
+            .ok_or_else(|| anyhow!("ConvTranspose1d weight tensor not found"))?;
+        let weight_slice = weight_data
+            .as_slice::<f32>()
+            .map_err(|e| anyhow!("Could not convert weight to f32: {:?}", e))?;
+
+        let channels_out_per_group = config.channels_out / config.groups;
+
+        let weight_tensor_data = TensorData::new(
+            weight_slice.to_vec(),
+            [
+                config.channels_in,
+                channels_out_per_group,
+                config.kernel_size,
+            ],
+        );
+        let weight: Tensor<B, 3> = Tensor::from_data(weight_tensor_data, device);
+
+        // Get optional bias [channels_out]
+        let bias: Option<Tensor<B, 1>> = if config.bias && n.inputs.len() > 2 {
+            let bias_arg = &n.inputs[2];
+            if let Some(bias_data) = bias_arg.value() {
+                let bias_slice = bias_data
+                    .as_slice::<f32>()
+                    .map_err(|e| anyhow!("Could not convert bias to f32: {:?}", e))?;
+                let bias_tensor_data = TensorData::new(bias_slice.to_vec(), [config.channels_out]);
+                Some(Tensor::from_data(bias_tensor_data, device))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Build ConvTransposeOptions
+        let conv_options = ConvTransposeOptions::new(
+            [config.stride],
+            [config.padding],
+            [config.padding_out],
+            [config.dilation],
+            config.groups,
+        );
+
+        // Execute transposed convolution
+        let output = module::conv_transpose1d(input, weight, bias, conv_options);
+
+        // Store output as rank-3 tensor
+        values.insert(output_name.clone(), DynTensor::from_rank3(output));
+
+        Ok(())
+    } else {
+        Err(anyhow!("Not a ConvTranspose1d node"))
+    }
+}

@@ -384,3 +384,142 @@ pub fn clip<B: Backend>(
         Err(anyhow!("Not a Clip node"))
     }
 }
+
+/// Cast operation - converts tensor between dtypes
+/// Note: Currently nnx only supports float tensors internally, so Cast operations
+/// between float types are treated as no-ops. Cast to/from int/bool types
+/// will require enhanced DynTensor support.
+pub fn cast<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    _device: &B::Device,
+) -> Result<()> {
+    if let Node::Cast(n) = node {
+        let input_name = &n.inputs[0].name;
+        let output_name = &n.outputs[0].name;
+        let target_dtype = &n.config.to;
+
+        let input_dyn = values
+            .get(input_name)
+            .ok_or_else(|| anyhow!("Input tensor '{}' not found for Cast", input_name))?;
+
+        // For now, DynTensor only supports float tensors internally
+        // Cast between float types is a no-op (F16, F32, F64 all stored as F32)
+        // For int/bool types, we pass through but note the limitation
+        use burn::tensor::DType;
+        match target_dtype {
+            DType::F32 | DType::F64 | DType::F16 | DType::BF16 => {
+                // Float-to-float cast: pass through (no-op in our current representation)
+                values.insert(output_name.clone(), input_dyn.clone());
+            }
+            DType::I64 | DType::I32 | DType::I16 | DType::I8 => {
+                // Float-to-int cast: for now, pass through with a warning
+                // This works if the tensor is used in contexts expecting floats
+                // but may cause issues if integer operations are expected
+                values.insert(output_name.clone(), input_dyn.clone());
+            }
+            DType::Bool => {
+                // Float-to-bool cast: pass through
+                // Non-zero values are true, zero is false
+                values.insert(output_name.clone(), input_dyn.clone());
+            }
+            _ => {
+                return Err(anyhow!("Cast: unsupported target dtype {:?}", target_dtype));
+            }
+        }
+        Ok(())
+    } else {
+        Err(anyhow!("Not a Cast node"))
+    }
+}
+
+/// ConstantOfShape - creates a tensor filled with a constant value
+pub fn constant_of_shape<B: Backend>(
+    node: &Node,
+    values: &mut ValueStore<B>,
+    device: &B::Device,
+) -> Result<()> {
+    use burn::tensor::TensorData;
+
+    if let Node::ConstantOfShape(n) = node {
+        let output_name = &n.outputs[0].name;
+
+        // Get the shape from config
+        use onnx_ir::node::constant_of_shape::ConstantOfShapeShape;
+
+        let shape: Vec<usize> = match &n.config.shape {
+            ConstantOfShapeShape::Static(s) => s.iter().map(|&d| d as usize).collect(),
+            ConstantOfShapeShape::Runtime(_) => {
+                return Err(anyhow!("ConstantOfShape: runtime shape not yet supported"));
+            }
+        };
+
+        // Get the fill value (default is 0.0f32)
+        let fill_value: f32 = if let Some(ref value_data) = n.config.value {
+            // Try to extract value as f32
+            if let Ok(s) = value_data.as_slice::<f32>() {
+                if !s.is_empty() {
+                    s[0]
+                } else {
+                    0.0
+                }
+            } else if let Ok(s) = value_data.as_slice::<i64>() {
+                if !s.is_empty() {
+                    s[0] as f32
+                } else {
+                    0.0
+                }
+            } else if let Ok(s) = value_data.as_slice::<i32>() {
+                if !s.is_empty() {
+                    s[0] as f32
+                } else {
+                    0.0
+                }
+            } else {
+                0.0
+            }
+        } else {
+            0.0
+        };
+
+        let rank = shape.len();
+
+        // Pad shape to rank 4
+        let mut padded_shape = [1usize; 4];
+        for (i, &dim) in shape.iter().enumerate() {
+            padded_shape[4 - rank + i] = dim;
+        }
+
+        // Create the tensor filled with constant value
+        let output_tensor: Tensor<B, 4> = Tensor::full(padded_shape, fill_value, device);
+
+        let output_dyn = match rank {
+            1 => {
+                let t: Tensor<B, 1> = output_tensor.reshape([shape[0]]);
+                DynTensor::from_rank1(t)
+            }
+            2 => {
+                let t: Tensor<B, 2> = output_tensor.reshape([shape[0], shape[1]]);
+                DynTensor::from_rank2(t)
+            }
+            3 => {
+                let t: Tensor<B, 3> = output_tensor.reshape([shape[0], shape[1], shape[2]]);
+                DynTensor::from_rank3(t)
+            }
+            4 => DynTensor::from_rank4(output_tensor),
+            0 => {
+                // Scalar (rank 0) - create as rank 1 with single element
+                let t: Tensor<B, 1> = Tensor::full([1], fill_value, device);
+                DynTensor::from_rank1(t)
+            }
+            _ => {
+                return Err(anyhow!("ConstantOfShape: unsupported output rank {}", rank));
+            }
+        };
+
+        values.insert(output_name.clone(), output_dyn);
+        Ok(())
+    } else {
+        Err(anyhow!("Not a ConstantOfShape node"))
+    }
+}

@@ -1,4 +1,5 @@
 pub mod activation;
+pub mod advanced;
 pub mod arithmetic;
 pub mod comparison;
 pub mod conv;
@@ -156,6 +157,9 @@ pub fn dispatch<B: burn::prelude::Backend>(
         Node::ConvTranspose2d(_) => {
             crate::ops::conv::conv_transpose2d(node, values, device)?;
         }
+        Node::ConvTranspose1d(_) => {
+            crate::ops::conv::conv_transpose1d(node, values, device)?;
+        }
         Node::MaxPool2d(_) => {
             crate::ops::conv::max_pool_2d(node, values, device)?;
         }
@@ -282,8 +286,61 @@ pub fn dispatch<B: burn::prelude::Backend>(
             crate::ops::arithmetic::mean_variadic(node, values, device)?;
         }
 
+        // Advanced data operations
+        Node::Gather(_) => {
+            crate::ops::advanced::gather(node, values, device)?;
+        }
+        Node::GatherElements(_) => {
+            crate::ops::advanced::gather_elements(node, values, device)?;
+        }
+        Node::Where(_) => {
+            crate::ops::advanced::where_op(node, values, device)?;
+        }
+        Node::TopK(_) => {
+            crate::ops::advanced::topk(node, values, device)?;
+        }
+        Node::CumSum(_) => {
+            crate::ops::advanced::cumsum(node, values, device)?;
+        }
+
+        // Additional shape manipulation operations
+        Node::Split(_) => {
+            crate::ops::shape::split(node, values, device)?;
+        }
+        Node::Slice(_) => {
+            crate::ops::shape::slice(node, values, device)?;
+        }
+        Node::Expand(_) => {
+            crate::ops::shape::expand(node, values, device)?;
+        }
+        Node::Tile(_) => {
+            crate::ops::shape::tile(node, values, device)?;
+        }
+        Node::Pad(_) => {
+            crate::ops::shape::pad(node, values, device)?;
+        }
+
         Node::Cast(_) => {
-            todo!("Cast not yet implemented");
+            crate::ops::activation::cast(node, values, device)?;
+        }
+        Node::ConstantOfShape(_) => {
+            crate::ops::activation::constant_of_shape(node, values, device)?;
+        }
+
+        // Spatial transform operations
+        Node::Resize(_) => {
+            crate::ops::shape::resize(node, values, device)?;
+        }
+        Node::DepthToSpace(_) => {
+            crate::ops::shape::depth_to_space(node, values, device)?;
+        }
+        Node::SpaceToDepth(_) => {
+            crate::ops::shape::space_to_depth(node, values, device)?;
+        }
+
+        // Advanced data operations - additional
+        Node::OneHot(_) => {
+            crate::ops::advanced::one_hot(node, values, device)?;
         }
         _ => anyhow::bail!("Unsupported operator: {} | {:?}", node.name(), node),
     }

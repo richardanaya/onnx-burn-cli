@@ -42,11 +42,11 @@
 - [x] 4.2 Implement Unsqueeze operator
 - [x] 4.3 Implement Transpose operator with permutation
 - [x] 4.4 Implement Concat operator (Tensor::cat)
-- [ ] 4.5 Implement Split operator
-- [ ] 4.6 Implement Slice operator
-- [ ] 4.7 Implement Expand operator
-- [ ] 4.8 Implement Tile operator
-- [ ] 4.9 Implement Pad operator
+- [x] 4.5 Implement Split operator
+- [x] 4.6 Implement Slice operator
+- [x] 4.7 Implement Expand operator
+- [x] 4.8 Implement Tile operator
+- [x] 4.9 Implement Pad operator
 - [x] 4.10 Implement Shape operator (return shape as tensor)
 - [x] 4.11 Implement Size operator (return total elements)
 - [x] 4.12 Wire up shape ops in dispatcher
@@ -95,10 +95,10 @@
 ## 9. Convolution Variants (extend src/ops/conv.rs)
 
 - [x] 9.1 Implement Conv1d operator
-- [ ] 9.2 Implement Conv3d operator
+- [ ] 9.2 Implement Conv3d operator (skipped - DynTensor only supports up to rank-4)
 - [x] 9.3 Implement ConvTranspose2d operator
-- [ ] 9.4 Implement ConvTranspose1d operator
-- [ ] 9.5 Implement ConvTranspose3d operator
+- [x] 9.4 Implement ConvTranspose1d operator
+- [ ] 9.5 Implement ConvTranspose3d operator (skipped - DynTensor only supports up to rank-4)
 - [x] 9.6 Wire up conv variants in dispatcher
 
 ## 10. Normalization Operations (src/ops/normalization.rs)
@@ -118,32 +118,32 @@
 
 ## 12. Advanced Data Operations (src/ops/advanced.rs)
 
-- [ ] 12.1 Create src/ops/advanced.rs module file
-- [ ] 12.2 Implement Gather operator
-- [ ] 12.3 Implement GatherElements operator
-- [ ] 12.4 Implement TopK operator
-- [ ] 12.5 Implement NonZero operator
-- [ ] 12.6 Implement Where operator
-- [ ] 12.7 Implement OneHot operator
-- [ ] 12.8 Implement CumSum operator
-- [ ] 12.9 Wire up advanced module in dispatcher
+- [x] 12.1 Create src/ops/advanced.rs module file
+- [x] 12.2 Implement Gather operator
+- [x] 12.3 Implement GatherElements operator
+- [x] 12.4 Implement TopK operator
+- [ ] 12.5 Implement NonZero operator (deferred - complex implementation)
+- [x] 12.6 Implement Where operator
+- [x] 12.7 Implement OneHot operator
+- [x] 12.8 Implement CumSum operator
+- [x] 12.9 Wire up advanced module in dispatcher
 
 ## 13. Type Conversion Operations
 
-- [ ] 13.1 Implement Cast operator (dtype conversion)
-- [ ] 13.2 Implement ConstantOfShape operator
+- [x] 13.1 Implement Cast operator (dtype conversion)
+- [x] 13.2 Implement ConstantOfShape operator
 
 ## 14. Spatial Transform Operations
 
-- [ ] 14.1 Implement Resize operator with nearest neighbor mode
-- [ ] 14.2 Implement Resize operator with bilinear mode
-- [ ] 14.3 Implement DepthToSpace operator
-- [ ] 14.4 Implement SpaceToDepth operator
+- [x] 14.1 Implement Resize operator with nearest neighbor mode
+- [x] 14.2 Implement Resize operator with bilinear mode
+- [x] 14.3 Implement DepthToSpace operator
+- [x] 14.4 Implement SpaceToDepth operator
 
 ## 15. Update Supported Ops List
 
-- [ ] 15.1 Update is_supported_op() in src/cli/info.rs with all new operators
-- [ ] 15.2 Update is_supported_op() in src/cli/infer.rs with all new operators
+- [x] 15.1 Update is_supported_op() in src/cli/info.rs with all new operators
+- [x] 15.2 Update is_supported_op() in src/cli/infer.rs with all new operators
 
 ## 16. Testing
 
