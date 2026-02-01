@@ -30,12 +30,10 @@
 - 🦀 Rust 2024 edition or later
 - 🔧 Cargo (comes with Rust)
 
-### Build from source
+### Install
 
 ```bash
-git clone https://github.com/yourusername/nnx.git
-cd nnx
-cargo build --release
+cargo install nnx
 ```
 
 ---
