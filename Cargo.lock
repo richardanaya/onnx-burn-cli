@@ -3766,6 +3766,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
+name = "nnx"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "burn",
+ "burn-wgpu",
+ "clap",
+ "image",
+ "onnx-ir",
+ "thiserror 2.0.18",
+ "tokio",
+ "wgpu",
+]
+
+[[package]]
 name = "no-std-compat"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3996,21 +4011,6 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
-
-[[package]]
-name = "onnx-burn-cli"
-version = "1.0.0"
-dependencies = [
- "anyhow",
- "burn",
- "burn-wgpu",
- "clap",
- "image",
- "onnx-ir",
- "thiserror 2.0.18",
- "tokio",
- "wgpu",
-]
 
 [[package]]
 name = "onnx-ir"
