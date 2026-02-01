@@ -8,8 +8,8 @@ pub mod ops;
 pub mod runtime;
 
 #[derive(Parser)]
-#[command(name = "onnx-burn-cli")]
-#[command(version = "0.5.1")]
+#[command(name = "nnx")]
+#[command(version = "0.0.0")]
 #[command(about = "Neural Network Execute - GPU-accelerated ONNX inference", long_about = None)]
 struct Cli {
     #[command(subcommand)]
